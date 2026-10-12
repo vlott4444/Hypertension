@@ -11,9 +11,13 @@ import (
 	"github.com/joho/godotenv"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+
+	"github.com/joho/godotenv"
 )
 
 func main() {
+
+	godotenv.Load()
 
 	_ = godotenv.Load()
 

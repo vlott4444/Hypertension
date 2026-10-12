@@ -27,26 +27,26 @@ func StartHypertensionServer(db *gorm.DB) {
 	router.Static("/resources", "./resources")
 
 	// ---------- HTML-роуты (не трогаем) ----------
-	router.GET("/feed/*stageID", htmlHandler.ShowHypertensionFeed)
+
+	router.GET("/feed/*serviceID", htmlHandler.ShowHypertensionFeed)
 	router.GET("/draft", htmlHandler.ShowHypertensionDraft)
 	router.GET("/stages", htmlHandler.ShowHypertensionGrid)
 	router.POST("/draft/publish", htmlHandler.PublishHypertensionDraft)
-	router.POST("/stages/:stageID/delete", htmlHandler.DeleteHypertensionStage)
+	router.POST("/stages/:serviceID/delete", htmlHandler.DeleteHypertensionService)
 
-	// ---------- REST API (лаба 4) ----------
 	api := router.Group("/api")
 	{
-		// Домен стадии гипертонии
-		api.GET("/hypertension_stages", apiHandler.GetStages)
+
+		api.GET("/hypertension_stages", apiHandler.GetServices)
 		api.GET("/feed", apiHandler.GetFeed)
 		api.GET("/feed/:id", apiHandler.GetFeedByID)
 		api.GET("/draft", apiHandler.GetDraft)
-		api.POST("/hypertension_stages", apiHandler.CreateStage)
-		api.PUT("/hypertension_stages/:id/publish", apiHandler.PublishStage)
-		api.DELETE("/hypertension_stages/:id", apiHandler.DeleteStage)
-		api.POST("/hypertension_stages/:id/like", apiHandler.LikeStage)
+		api.POST("/hypertension_stages", apiHandler.CreateService)
+		api.PUT("/hypertension_stages/:id/publish", apiHandler.PublishService)
+		api.DELETE("/hypertension_stages/:id", apiHandler.DeleteService)
+		api.POST("/hypertension_stages/:id/like", apiHandler.LikeService)
 
-		// Домен пользователя
+
 		api.POST("/auth/register", apiHandler.Register)
 		api.POST("/auth/login", apiHandler.Login)
 		api.POST("/auth/logout", apiHandler.Logout)

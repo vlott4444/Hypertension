@@ -33,7 +33,7 @@ type HypertensionStage struct {
 
 	Likes []HypertensionLike `gorm:"foreignKey:HypertensionStageID" json:"-"`
 
-	// Вычисляемые признаки для API. В базе данных не хранятся.
+
 	IsOwner *int `gorm:"-" json:"is_owner,omitempty"`
 	IsLiked *int `gorm:"-" json:"is_liked,omitempty"`
 }
