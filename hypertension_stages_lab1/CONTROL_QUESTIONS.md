@@ -6,7 +6,7 @@ MVT = Model–View–Template, архитектурный подход Django-п
 
 ## MVC в этой лабораторной
 
-- **Model:** `HypertensionService`, `HypertensionRepository`, коллекция услуг.
+- **Model:** `HypertensionStage`, `HypertensionRepository`, коллекция услуг.
 - **Controller:** `HypertensionHandler`; принимает HTTP-запрос, читает `id`, `next`, `sbp`, фильтрует данные и считает лайки.
 - **View:** Go HTML templates `hypertension_feed.html`, `hypertension_draft.html`, `hypertension_grid.html` + CSS.
 

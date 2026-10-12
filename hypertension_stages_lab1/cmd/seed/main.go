@@ -77,11 +77,12 @@ func main() {
 	// -------------------------------------------------------
 	// 2. КАРТОЧКИ
 	// -------------------------------------------------------
-	// В БД храним ИМЯ файла (не URL), сам файл — в Minio.
+	// В БД храним имена файлов. Стандартные файлы черновика лежат в resources/media;
+	// медиа опубликованных карточек могут храниться в MinIO.
 
 	now := time.Now()
 
-	services := []ds.HypertensionService{
+	services := []ds.HypertensionStage{
 		{
 			Title:       "Оптимальное давление",
 			Description: "Систолическое давление ниже 120 мм рт. ст. Оптимальный уровень артериального давления характеризуется значениями ниже 120 мм рт. ст. для систолического давления и ниже 80 мм рт. ст. для диастолического. Обычно такое давление связано с низким риском сердечно-сосудистых осложнений. Для поддержания нормальных показателей рекомендуется сохранять физическую активность, придерживаться сбалансированного питания и регулярно контролировать давление.",
@@ -205,7 +206,7 @@ func main() {
 	}
 
 	for _, service := range services {
-		var stored ds.HypertensionService
+		var stored ds.HypertensionStage
 
 		result := db.
 			Where("title = ?", service.Title).
@@ -217,30 +218,30 @@ func main() {
 		}
 	}
 
-	var firstService ds.HypertensionService
-	var secondService ds.HypertensionService
+	var firstService ds.HypertensionStage
+	var secondService ds.HypertensionStage
 
 	db.Where("title = ?", "Оптимальное давление").First(&firstService)
 	db.Where("title = ?", "Нормальное давление").First(&secondService)
 
 	likes := []ds.HypertensionLike{
 		{
-			UserID:                owner.ID,
-			HypertensionServiceID: firstService.ID,
-			Value:                 1,
+			UserID:              owner.ID,
+			HypertensionStageID: firstService.ID,
+			Value:               1,
 		},
 		{
-			UserID:                owner.ID,
-			HypertensionServiceID: secondService.ID,
-			Value:                 0,
+			UserID:              owner.ID,
+			HypertensionStageID: secondService.ID,
+			Value:               0,
 		},
 	}
 
 	for _, like := range likes {
 		var stored ds.HypertensionLike
 		res := db.
-			Where("user_id = ? AND hypertension_service_id = ?",
-				like.UserID, like.HypertensionServiceID).
+			Where("user_id = ? AND hypertension_stage_id = ?",
+				like.UserID, like.HypertensionStageID).
 			Assign(ds.HypertensionLike{Value: like.Value}).
 			FirstOrCreate(&stored, like)
 

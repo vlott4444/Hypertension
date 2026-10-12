@@ -10,7 +10,7 @@ const (
 	HypertensionDeleted   HypertensionStatus = "удален"
 )
 
-type HypertensionService struct {
+type HypertensionStage struct {
 	ID          uint               `gorm:"primaryKey" json:"id"`
 	Title       string             `json:"title"`
 	Description string             `json:"description"`
@@ -31,7 +31,11 @@ type HypertensionService struct {
 	FormedAt    *time.Time `json:"formed_at"`
 	CompletedAt *time.Time `json:"completed_at"`
 
-	Likes []HypertensionLike `gorm:"foreignKey:HypertensionServiceID" json:"-"`
+	Likes []HypertensionLike `gorm:"foreignKey:HypertensionStageID" json:"-"`
+
+	// Вычисляемые признаки для API. В базе данных не хранятся.
+	IsOwner *int `gorm:"-" json:"is_owner,omitempty"`
+	IsLiked *int `gorm:"-" json:"is_liked,omitempty"`
 }
 
 func HypertensionStageNumberBySBP(sbp int) int {

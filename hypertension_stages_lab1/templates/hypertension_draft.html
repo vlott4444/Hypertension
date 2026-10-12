@@ -8,34 +8,26 @@
 </head>
 <body class="app-body draft-body">
 <main class="phone-shell draft-shell">
-    <form class="draft-content" action="/draft/publish" method="POST">
+    <form class="draft-content" action="{{if .Card.Service.ID}}/draft/publish{{else}}/draft/create{{end}}" method="POST">
         <h1>Расчет и классификация<br>стадии АГ</h1>
 
-        <input type="hidden" name="service_id" value="{{ .Card.Service.ID }}">
+        <input type="hidden" name="stage_id" value="{{ .Card.Service.ID }}">
 
         <section class="draft-field media-field">
             <label for="photo">Фото:</label>
-            {{ if .Card.Service.ImageURL }}
-            <img class="draft-preview" src="{{ .Card.Service.ImageURL }}" alt="Фото черновика {{ .Card.StageTitle }}">
-            {{ else }}
-            <img class="draft-preview" src="/resources/media/stage1.png" alt="Фото по умолчанию">
-            {{ end }}
+            <img class="draft-preview" src="/resources/media/draft_stage1.png" alt="Фото черновика">
             <input id="photo" type="file" accept="image/png,image/jpeg">
-            <small>Minio: {{ .Card.Service.ImageURL }}</small>
+            <small>Фото по умолчанию хранится на сервере</small>
         </section>
 
         <section class="draft-field media-field">
             <label for="video">Видео:</label>
             <video class="draft-video-preview" muted controls preload="metadata"
-                   poster="{{ if .Card.Service.ImageURL }}{{ .Card.Service.ImageURL }}{{ else }}/resources/media/stage1.png{{ end }}">
-                {{ if .Card.Service.VideoURL }}
-                <source src="{{ .Card.Service.VideoURL }}" type="video/mp4">
-                {{ else }}
-                <source src="/resources/media/stage1.mp4" type="video/mp4">
-                {{ end }}
+                   poster="/resources/media/draft_stage1.png">
+                <source src="/resources/media/draft_stage1.mp4" type="video/mp4">
             </video>
             <input id="video" type="file" accept="video/mp4">
-            <small>Minio: {{ .Card.Service.VideoURL }}</small>
+            <small>Видео по умолчанию хранится на сервере</small>
         </section>
 
         <section class="draft-field text-field">
@@ -59,7 +51,7 @@
             </div>
         </section>
 
-        <button class="publish-button" type="submit">Опубликовать</button>
+        <button class="publish-button" type="submit">{{if .Card.Service.ID}}Опубликовать{{else}}Создать черновик{{end}}</button>
     </form>
 
     <nav class="bottom-nav" aria-label="Основная навигация">

@@ -17,7 +17,7 @@ type HypertensionHandler struct {
 }
 
 type HypertensionCardView struct {
-	Service         ds.HypertensionService
+	Service         ds.HypertensionStage
 	StageTitle      string
 	StageRomanTitle string
 	StageRange      string
@@ -34,7 +34,7 @@ func NewHypertensionHandler(
 
 // GET — лента
 func (h *HypertensionHandler) ShowHypertensionFeed(ctx *gin.Context) {
-	service, err := h.getHypertensionServiceForFeed(ctx)
+	service, err := h.getHypertensionStageForFeed(ctx)
 	if err != nil {
 		ctx.String(http.StatusNotFound, err.Error())
 		return
@@ -58,16 +58,31 @@ func (h *HypertensionHandler) ShowHypertensionDraft(ctx *gin.Context) {
 	})
 }
 
+// POST — отдельное создание карточки через ORM.
+func (h *HypertensionHandler) CreateHypertensionDraft(ctx *gin.Context) {
+	sbp, err1 := strconv.Atoi(ctx.PostForm("sbp"))
+	dbp, err2 := strconv.Atoi(ctx.PostForm("dbp"))
+	if err1 != nil || err2 != nil || sbp <= 0 || dbp <= 0 {
+		ctx.String(http.StatusBadRequest, "некорректное давление")
+		return
+	}
+	if err := h.HypertensionRepository.CreateHypertensionDraft(ctx.PostForm("description"), sbp, dbp); err != nil {
+		ctx.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+	ctx.Redirect(http.StatusSeeOther, "/draft")
+}
+
 // POST — публикация через ORM
 func (h *HypertensionHandler) PublishHypertensionDraft(ctx *gin.Context) {
-	serviceID, systolicBP, diastolicBP, err := parseDraftForm(ctx)
+	stageID, systolicBP, diastolicBP, err := parseDraftForm(ctx)
 	if err != nil {
 		ctx.String(http.StatusBadRequest, "некорректные данные")
 		return
 	}
 
 	err = h.HypertensionRepository.PublishHypertensionDraft(
-		serviceID,
+		stageID,
 		ctx.PostForm("description"),
 		systolicBP,
 		diastolicBP,
@@ -84,7 +99,7 @@ func (h *HypertensionHandler) PublishHypertensionDraft(ctx *gin.Context) {
 // GET — плитка и поиск
 func (h *HypertensionHandler) ShowHypertensionGrid(ctx *gin.Context) {
 	services, boundsMin, boundsMax, sbpMin, sbpMax, filterError, err :=
-		h.getHypertensionServicesForGrid(ctx)
+		h.getHypertensionStagesForGrid(ctx)
 
 	if err != nil {
 		ctx.String(http.StatusInternalServerError, err.Error())
@@ -111,16 +126,16 @@ func (h *HypertensionHandler) ShowHypertensionGrid(ctx *gin.Context) {
 }
 
 // POST — удаление чистый SQL
-func (h *HypertensionHandler) DeleteHypertensionService(ctx *gin.Context) {
-	serviceID, err := strconv.Atoi(ctx.Param("serviceID"))
+func (h *HypertensionHandler) DeleteHypertensionStage(ctx *gin.Context) {
+	stageID, err := strconv.Atoi(ctx.Param("stageID"))
 	if err != nil {
 		ctx.String(http.StatusBadRequest, "некорректный id")
 		return
 	}
 
-	err = h.HypertensionRepository.DeleteHypertensionServiceSQL(
+	err = h.HypertensionRepository.DeleteHypertensionStageSQL(
 		ctx.Request.Context(),
-		serviceID,
+		stageID,
 	)
 
 	if err != nil {
@@ -135,42 +150,35 @@ func (h *HypertensionHandler) DeleteHypertensionService(ctx *gin.Context) {
 // ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
 // --------------------
 
-func (h *HypertensionHandler) getHypertensionServiceForFeed(
+func (h *HypertensionHandler) getHypertensionStageForFeed(
 	ctx *gin.Context,
-) (ds.HypertensionService, error) {
+) (ds.HypertensionStage, error) {
 
-	rawID := strings.Trim(ctx.Param("serviceID"), "/")
+	rawID := strings.Trim(ctx.Param("stageID"), "/")
 
 	if rawID == "" {
-		services, err :=
-			h.HypertensionRepository.PublishedHypertensionServices()
-
-		if err != nil {
-			return ds.HypertensionService{}, err
-		}
-
-		return services[0], nil
+		return h.HypertensionRepository.NextPublishedHypertensionStage(0)
 	}
 
-	serviceID, err := strconv.Atoi(rawID)
+	stageID, err := strconv.Atoi(rawID)
 	if err != nil {
-		return ds.HypertensionService{}, err
+		return ds.HypertensionStage{}, err
 	}
 
 	if ctx.Query("next") == "true" {
 		return h.HypertensionRepository.
-			NextPublishedHypertensionService(serviceID)
+			NextPublishedHypertensionStage(stageID)
 	}
 
 	return h.HypertensionRepository.
-		HypertensionServiceByID(serviceID)
+		HypertensionStageByID(stageID)
 }
 
 func parseDraftForm(
 	ctx *gin.Context,
 ) (int, int, int, error) {
 
-	serviceID, err := strconv.Atoi(ctx.PostForm("service_id"))
+	stageID, err := strconv.Atoi(ctx.PostForm("stage_id"))
 	if err != nil {
 		return 0, 0, 0, err
 	}
@@ -185,16 +193,16 @@ func parseDraftForm(
 		return 0, 0, 0, err
 	}
 
-	return serviceID, systolicBP, diastolicBP, nil
+	return stageID, systolicBP, diastolicBP, nil
 }
 
-// getHypertensionServicesForGrid возвращает карточки, отфильтрованные
+// getHypertensionStagesForGrid возвращает карточки, отфильтрованные
 // по диапазону [sbp_min, sbp_max], а также границы шкалы и текущие
 // значения ползунков для шаблона.
-func (h *HypertensionHandler) getHypertensionServicesForGrid(
+func (h *HypertensionHandler) getHypertensionStagesForGrid(
 	ctx *gin.Context,
 ) (
-	services []ds.HypertensionService,
+	services []ds.HypertensionStage,
 	boundsMin, boundsMax int,
 	sbpMin, sbpMax int,
 	filterError string,
@@ -247,7 +255,7 @@ func (h *HypertensionHandler) getHypertensionServicesForGrid(
 }
 
 func (h *HypertensionHandler) BuildHypertensionCardView(
-	service ds.HypertensionService,
+	service ds.HypertensionStage,
 ) HypertensionCardView {
 
 	return HypertensionCardView{

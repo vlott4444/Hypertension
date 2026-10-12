@@ -34,23 +34,24 @@ func main() {
 	router.LoadHTMLGlob("./templates/*")
 	router.Static("/resources", "./resources")
 
-	router.GET("/feed/*serviceID", hypertensionHandler.ShowHypertensionFeed)
+	router.GET("/feed/*stageID", hypertensionHandler.ShowHypertensionFeed)
 	router.GET("/draft", hypertensionHandler.ShowHypertensionDraft)
+	router.POST("/draft/create", hypertensionHandler.CreateHypertensionDraft)
 	router.POST("/draft/publish", hypertensionHandler.PublishHypertensionDraft)
 	router.GET("/stages", hypertensionHandler.ShowHypertensionGrid)
-	router.POST("/stages/:serviceID/delete", hypertensionHandler.DeleteHypertensionService)
+	router.POST("/stages/:stageID/delete", hypertensionHandler.DeleteHypertensionStage)
 
 	api := router.Group("/api")
 	{
 
-		api.GET("/services", apiHandler.GetServices)
+		api.GET("/hypertension_stages", apiHandler.GetStages)
 		api.GET("/feed", apiHandler.GetFeed)
 		api.GET("/feed/:id", apiHandler.GetFeedByID)
 		api.GET("/draft", apiHandler.GetDraft)
-		api.POST("/services", apiHandler.CreateService)
-		api.PUT("/services/:id/publish", apiHandler.PublishService)
-		api.DELETE("/services/:id", apiHandler.DeleteService)
-		api.POST("/services/:id/like", apiHandler.LikeService)
+		api.POST("/hypertension_stages", apiHandler.CreateStage)
+		api.PUT("/hypertension_stages/:id/publish", apiHandler.PublishStage)
+		api.DELETE("/hypertension_stages/:id", apiHandler.DeleteStage)
+		api.POST("/hypertension_stages/:id/like", apiHandler.LikeStage)
 
 		api.POST("/auth/register", apiHandler.Register)
 		api.POST("/auth/login", apiHandler.Login)

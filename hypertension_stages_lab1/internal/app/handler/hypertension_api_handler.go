@@ -22,29 +22,30 @@ func NewAPIHandler(repo *repository.HypertensionRepository) *APIHandler {
 }
 
 // ============================================================
-// ДОМЕН УСЛУГИ
+// ДОМЕН СТАДИИ ГИПЕРТОНИИ
 // ============================================================
 
-// GET /api/services?filter=...
+// GET /api/hypertension_stages?filter=...
 // Список опубликованных с фильтрацией.
-// Поле "is_mine" 0/1 — если создатель совпадает с текущим пользователем.
-func (h *APIHandler) GetServices(c *gin.Context) {
+// Поле "is_owner" 0/1 — если создатель совпадает с текущим пользователем.
+func (h *APIHandler) GetStages(c *gin.Context) {
 	user := ds.GetCurrentUser()
 	filter := c.Query("filter")
 
-	services, err := h.Repo.APIGetServices(user.ID, filter)
+	services, err := h.Repo.APIGetStages(user.ID, filter)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"services": services})
+	c.JSON(http.StatusOK, gin.H{"hypertension_stages": services})
 }
 
 // GET /api/feed
 // Лента — только опубликованные.
 func (h *APIHandler) GetFeed(c *gin.Context) {
-	services, err := h.Repo.APIGetFeed()
+	user := ds.GetCurrentUser()
+	services, err := h.Repo.APIGetFeed(user.ID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -62,19 +63,20 @@ func (h *APIHandler) GetFeedByID(c *gin.Context) {
 	}
 
 	next := c.Query("next") == "true"
+	user := ds.GetCurrentUser()
 
-	var service ds.HypertensionService
+	var service ds.HypertensionStage
 	if next {
-		service, err = h.Repo.APINextPublished(id)
+		service, err = h.Repo.APINextPublished(id, user.ID)
 	} else {
-		service, err = h.Repo.APIPublishedByID(id)
+		service, err = h.Repo.APIPublishedByID(id, user.ID)
 	}
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"service": service})
+	c.JSON(http.StatusOK, gin.H{"hypertension_stage": service})
 }
 
 // GET /api/draft
@@ -91,12 +93,12 @@ func (h *APIHandler) GetDraft(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"draft": service})
 }
 
-// POST /api/services
-// Создание услуги с загрузкой файлов (multipart/form-data).
-// Название услуги, описание, САД, ДАД — из формы.
+// POST /api/hypertension_stages
+// Создание стадии гипертонии с загрузкой файлов (multipart/form-data).
+// Название стадии, описание, САД, ДАД — из формы.
 // Файлы: image, video.
 // Системные поля (ID, статус, создатель, даты) с клиента игнорируются.
-func (h *APIHandler) CreateService(c *gin.Context) {
+func (h *APIHandler) CreateStage(c *gin.Context) {
 	user := ds.GetCurrentUser()
 
 	title := c.PostForm("title")
@@ -116,7 +118,7 @@ func (h *APIHandler) CreateService(c *gin.Context) {
 		return
 	}
 
-	service, err := h.Repo.APICreateService(
+	service, err := h.Repo.APICreateStage(
 		user.ID, title, description, sbp, dbp, imageName, videoName,
 	)
 	if err != nil {
@@ -124,12 +126,12 @@ func (h *APIHandler) CreateService(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"service": service})
+	c.JSON(http.StatusCreated, gin.H{"hypertension_stage": service})
 }
 
-// PUT /api/services/:id/publish
+// PUT /api/hypertension_stages/:id/publish
 // Публикация черновика. Только свои услуги.
-func (h *APIHandler) PublishService(c *gin.Context) {
+func (h *APIHandler) PublishStage(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
@@ -138,18 +140,18 @@ func (h *APIHandler) PublishService(c *gin.Context) {
 
 	user := ds.GetCurrentUser()
 
-	service, err := h.Repo.APIPublishService(id, user.ID)
+	service, err := h.Repo.APIPublishStage(id, user.ID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"service": service})
+	c.JSON(http.StatusOK, gin.H{"hypertension_stage": service})
 }
 
-// DELETE /api/services/:id
+// DELETE /api/hypertension_stages/:id
 // Soft delete. Только свои услуги.
-func (h *APIHandler) DeleteService(c *gin.Context) {
+func (h *APIHandler) DeleteStage(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
@@ -158,7 +160,7 @@ func (h *APIHandler) DeleteService(c *gin.Context) {
 
 	user := ds.GetCurrentUser()
 
-	if err := h.Repo.APISoftDeleteService(id, user.ID); err != nil {
+	if err := h.Repo.APISoftDeleteStage(id, user.ID); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -166,9 +168,9 @@ func (h *APIHandler) DeleteService(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"status": "deleted"})
 }
 
-// POST /api/services/:id/like
+// POST /api/hypertension_stages/:id/like
 // Тело: {"value": 0|1}
-func (h *APIHandler) LikeService(c *gin.Context) {
+func (h *APIHandler) LikeStage(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
@@ -233,14 +235,14 @@ func (h *APIHandler) Logout(c *gin.Context) {
 }
 
 // saveUploadedFile принимает файл из формы, генерирует латинское имя
-// и загружает в Minio. Возвращает имя файла (для сохранения в БД).
+// для последующей загрузки в MinIO. Возвращает имя файла (для сохранения в БД).
 func saveUploadedFile(c *gin.Context, field string) (string, error) {
 	file, err := c.FormFile(field)
 	if err != nil {
 		return "", fmt.Errorf("файл %s не передан", field)
 	}
 
-	// TODO: здесь подключишь Minio-клиент из resources/minio
+	// TODO: здесь подключишь Minio-клиент для пользовательских файлов
 	// и загрузишь файл. Пока просто возвращаем имя.
 	return file.Filename, nil
 }

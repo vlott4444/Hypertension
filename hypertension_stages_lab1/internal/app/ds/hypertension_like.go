@@ -5,8 +5,8 @@ type HypertensionLike struct {
 	UserID uint `json:"user_id"`
 	User   User `gorm:"foreignKey:UserID" json:"-"`
 
-	HypertensionServiceID uint                `json:"hypertension_service_id"`
-	HypertensionService   HypertensionService `gorm:"foreignKey:HypertensionServiceID" json:"-"`
+	HypertensionStageID uint              `json:"hypertension_stage_id"`
+	HypertensionStage   HypertensionStage `gorm:"foreignKey:HypertensionStageID" json:"-"`
 
 	// 0 — лайк снят, 1 — лайк поставлен
 	Value int `json:"value"`
