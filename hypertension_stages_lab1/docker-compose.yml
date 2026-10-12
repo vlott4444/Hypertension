@@ -25,6 +25,15 @@ services:
     ports:
       - "8081:8080"
 
+  redis:
+    image: redis:7-alpine
+    container_name: hypertension_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - hypertension-redis-data:/data
+    command: redis-server --appendonly yes
+
   minio:
     container_name: hypertension_minio
     image: quay.io/minio/minio:latest
@@ -57,3 +66,4 @@ services:
 volumes:
   hypertension-postgres-data:
   hypertension-minio-data:
+  hypertension-redis-data:

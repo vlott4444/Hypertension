@@ -312,24 +312,19 @@ func (r *HypertensionRepository) APIGetStages(
 }
 
 // APIGetFeed — опубликованные стадии с признаком активного лайка пользователя.
-func (r *HypertensionRepository) APIGetFeed(userID uint) ([]ds.HypertensionStage, error) {
-	var stages []ds.HypertensionStage
-	err := r.db.
-		Preload("Likes", "user_id = ? AND value = ?", userID, 1).
-		Where("status = ?", ds.HypertensionPublished).
-		Order("id ASC").
-		Find(&stages).Error
+func (r *HypertensionRepository) APIGetFeed(userID uint) (ds.HypertensionStage, error) {
+	var stage ds.HypertensionStage
+	err := r.db.Preload("Likes", "user_id = ? AND value = ?", userID, 1).
+		Where("status = ?", ds.HypertensionPublished).Order("id ASC").First(&stage).Error
 	if err != nil {
-		return nil, err
+		return stage, err
 	}
-	for i := range stages {
-		value := 0
-		if len(stages[i].Likes) > 0 {
-			value = 1
-		}
-		stages[i].IsLiked = &value
+	liked := 0
+	if len(stage.Likes) > 0 {
+		liked = 1
 	}
-	return stages, nil
+	stage.IsLiked = &liked
+	return stage, nil
 }
 
 // APIPublishedByID — опубликованная стадия по ID с признаком лайка.
@@ -405,6 +400,13 @@ func (r *HypertensionRepository) APICreateStage(
 	imageName, videoName string,
 ) (ds.HypertensionStage, error) {
 
+	var existing int64
+	if err := r.db.Model(&ds.HypertensionStage{}).Where("user_id = ? AND status = ?", userID, ds.HypertensionDraft).Count(&existing).Error; err != nil {
+		return ds.HypertensionStage{}, err
+	}
+	if existing > 0 {
+		return ds.HypertensionStage{}, fmt.Errorf("user already has a draft")
+	}
 	s := ds.HypertensionStage{
 		Title:       title,
 		Description: description,
@@ -447,7 +449,9 @@ func (r *HypertensionRepository) APIPublishStage(
 	}
 
 	var s ds.HypertensionStage
-	r.db.First(&s, id)
+	if err := r.db.First(&s, id).Error; err != nil {
+		return ds.HypertensionStage{}, err
+	}
 	return s, nil
 }
 
@@ -506,4 +510,11 @@ func (r *HypertensionRepository) APIRegisterUser(
 		return ds.User{}, err
 	}
 	return user, nil
+}
+
+// UserByUsername is used only during password verification.
+func (r *HypertensionRepository) UserByUsername(username string) (ds.User, error) {
+	var user ds.User
+	err := r.db.Where("username = ?", username).First(&user).Error
+	return user, err
 }

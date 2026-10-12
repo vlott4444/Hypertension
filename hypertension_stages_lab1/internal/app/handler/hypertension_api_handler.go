@@ -2,8 +2,12 @@ package handler
 
 import (
 	"fmt"
+	"golang.org/x/crypto/bcrypt"
+	"hypertensionstages/internal/app/auth"
+	"hypertensionstages/internal/app/media"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"hypertensionstages/internal/app/ds"
 	"hypertensionstages/internal/app/repository"
@@ -29,7 +33,7 @@ func NewAPIHandler(repo *repository.HypertensionRepository) *APIHandler {
 // Список опубликованных с фильтрацией.
 // Поле "is_owner" 0/1 — если создатель совпадает с текущим пользователем.
 func (h *APIHandler) GetStages(c *gin.Context) {
-	user := ds.GetCurrentUser()
+	user := currentUser(c)
 	filter := c.Query("filter")
 
 	services, err := h.Repo.APIGetStages(user.ID, filter)
@@ -44,13 +48,13 @@ func (h *APIHandler) GetStages(c *gin.Context) {
 // GET /api/feed
 // Лента — только опубликованные.
 func (h *APIHandler) GetFeed(c *gin.Context) {
-	user := ds.GetCurrentUser()
-	services, err := h.Repo.APIGetFeed(user.ID)
+	user := currentUser(c)
+	service, err := h.Repo.APIGetFeed(user.ID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"feed": services})
+	c.JSON(http.StatusOK, gin.H{"feed": service})
 }
 
 // GET /api/feed/:id?next=true
@@ -63,7 +67,7 @@ func (h *APIHandler) GetFeedByID(c *gin.Context) {
 	}
 
 	next := c.Query("next") == "true"
-	user := ds.GetCurrentUser()
+	user := currentUser(c)
 
 	var service ds.HypertensionStage
 	if next {
@@ -82,7 +86,7 @@ func (h *APIHandler) GetFeedByID(c *gin.Context) {
 // GET /api/draft
 // Черновик текущего пользователя. Не более одного. ID не указывается.
 func (h *APIHandler) GetDraft(c *gin.Context) {
-	user := ds.GetCurrentUser()
+	user := currentUser(c)
 
 	service, err := h.Repo.APIGetDraft(user.ID)
 	if err != nil {
@@ -99,7 +103,7 @@ func (h *APIHandler) GetDraft(c *gin.Context) {
 // Файлы: image, video.
 // Системные поля (ID, статус, создатель, даты) с клиента игнорируются.
 func (h *APIHandler) CreateStage(c *gin.Context) {
-	user := ds.GetCurrentUser()
+	user := currentUser(c)
 
 	title := c.PostForm("title")
 	description := c.PostForm("description")
@@ -138,7 +142,7 @@ func (h *APIHandler) PublishStage(c *gin.Context) {
 		return
 	}
 
-	user := ds.GetCurrentUser()
+	user := currentUser(c)
 
 	service, err := h.Repo.APIPublishStage(id, user.ID)
 	if err != nil {
@@ -158,7 +162,7 @@ func (h *APIHandler) DeleteStage(c *gin.Context) {
 		return
 	}
 
-	user := ds.GetCurrentUser()
+	user := currentUser(c)
 
 	if err := h.Repo.APISoftDeleteStage(id, user.ID); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -189,7 +193,7 @@ func (h *APIHandler) LikeStage(c *gin.Context) {
 		return
 	}
 
-	user := ds.GetCurrentUser()
+	user := currentUser(c)
 
 	like, err := h.Repo.APIToggleLike(id, user.ID, body.Value)
 	if err != nil {
@@ -211,38 +215,109 @@ func (h *APIHandler) Register(c *gin.Context) {
 		Password string `json:"password"`
 	}
 	if err := c.ShouldBindJSON(&body); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid body"})
+		c.JSON(400, gin.H{"error": "invalid body"})
 		return
 	}
-
-	user, err := h.Repo.APIRegisterUser(body.Username, body.Password)
+	body.Username = strings.TrimSpace(body.Username)
+	if len(body.Username) < 3 || len(body.Password) < 8 {
+		c.JSON(400, gin.H{"error": "username requires 3 characters, password requires 8"})
+		return
+	}
+	hash, err := bcrypt.GenerateFromPassword([]byte(body.Password), bcrypt.DefaultCost)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(500, gin.H{"error": "password hashing failed"})
 		return
 	}
-
-	c.JSON(http.StatusCreated, gin.H{"user": user})
+	user, err := h.Repo.APIRegisterUser(body.Username, string(hash))
+	if err != nil {
+		c.JSON(409, gin.H{"error": "registration failed"})
+		return
+	}
+	c.JSON(201, gin.H{"user": user})
 }
-
-// POST /api/auth/login — заглушка
 func (h *APIHandler) Login(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{"status": "stub"})
+	var body struct {
+		Username string `json:"username"`
+		Password string `json:"password"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(400, gin.H{"error": "invalid body"})
+		return
+	}
+	u, err := h.Repo.UserByUsername(body.Username)
+	if err != nil || bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(body.Password)) != nil {
+		c.JSON(401, gin.H{"error": "invalid credentials"})
+		return
+	}
+	token, claims, err := auth.Issue(u.ID)
+	if err != nil {
+		c.JSON(500, gin.H{"error": "token creation failed"})
+		return
+	}
+	c.JSON(200, gin.H{"access_token": token, "token_type": "Bearer", "expires_at": claims.ExpiresAt})
 }
-
-// POST /api/auth/logout — заглушка
 func (h *APIHandler) Logout(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{"status": "stub"})
+	claims, ok := c.Get("jwt_claims")
+	if !ok {
+		c.JSON(401, gin.H{"error": "authentication required"})
+		return
+	}
+	if err := auth.Revoke(c.Request.Context(), claims.(auth.Claims)); err != nil {
+		c.JSON(503, gin.H{"error": "redis unavailable"})
+		return
+	}
+	c.JSON(200, gin.H{"status": "logged_out"})
 }
 
-// saveUploadedFile принимает файл из формы, генерирует латинское имя
-// для последующей загрузки в MinIO. Возвращает имя файла (для сохранения в БД).
+// Optional authentication for public endpoints, required authentication for mutations.
+func AuthMiddleware(required bool) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		header := strings.TrimSpace(c.GetHeader("Authorization"))
+		if header == "" {
+			if required {
+				c.AbortWithStatusJSON(401, gin.H{"error": "Bearer token required"})
+				return
+			}
+			c.Next()
+			return
+		}
+		parts := strings.Fields(header)
+		if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") {
+			c.AbortWithStatusJSON(401, gin.H{"error": "invalid authorization header"})
+			return
+		}
+		id, claims, err := auth.Verify(parts[1])
+		if err != nil {
+			c.AbortWithStatusJSON(401, gin.H{"error": "invalid or expired token"})
+			return
+		}
+		revoked, err := auth.Revoked(c.Request.Context(), claims.ID)
+		if err != nil {
+			c.AbortWithStatusJSON(503, gin.H{"error": "redis unavailable"})
+			return
+		}
+		if revoked {
+			c.AbortWithStatusJSON(401, gin.H{"error": "token revoked"})
+			return
+		}
+		c.Set("current_user_id", id)
+		c.Set("jwt_claims", claims)
+		c.Next()
+	}
+}
+func currentUser(c *gin.Context) *ds.User {
+	v, ok := c.Get("current_user_id")
+	if !ok {
+		return &ds.User{}
+	}
+	return &ds.User{ID: v.(uint)}
+}
+
+// saveUploadedFile validates and uploads the file into MinIO.
 func saveUploadedFile(c *gin.Context, field string) (string, error) {
 	file, err := c.FormFile(field)
 	if err != nil {
-		return "", fmt.Errorf("файл %s не передан", field)
+		return "", fmt.Errorf("file %s is missing", field)
 	}
-
-	// TODO: здесь подключишь Minio-клиент для пользовательских файлов
-	// и загрузишь файл. Пока просто возвращаем имя.
-	return file.Filename, nil
+	return media.Upload(file, field)
 }

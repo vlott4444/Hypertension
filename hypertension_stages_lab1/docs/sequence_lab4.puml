@@ -1,0 +1,24 @@
+@startuml
+title Hypertension Stages — ЛР 4 (Sequence)
+actor "Пользователь" as U
+participant "SPA" as Front
+participant "Auth domain" as Auth
+participant "Hypertension Stages domain" as Stages
+U -> Front: Ввод логина и пароля
+Front -> Auth: POST /api/auth/login(username,password)
+Auth --> Front: 200 access_token (JWT)
+Front -> Stages: GET /api/hypertension_stages?filter=... (Bearer)
+Stages --> Front: 200 hypertension_stages[], is_owner
+Front -> Stages: POST /api/hypertension_stages(title,image,video,SBP,DBP; JWT)
+Stages --> Front: 201 hypertension_stage(id,status=черновик)
+Front -> Stages: GET /api/draft (JWT)
+Stages --> Front: 200 draft(id, title, media)
+Front -> Stages: PUT /api/hypertension_stages/{id}/publish (JWT)
+Stages --> Front: 200 hypertension_stage(status=опубликован)
+Front -> Stages: GET /api/feed
+Stages --> Front: 200 feed(id,is_liked)
+Front -> Stages: GET /api/feed/{id}?next=true
+Stages --> Front: 200 hypertension_stage(next_id,is_liked)
+Front -> Stages: POST /api/hypertension_stages/{id}/like(value=1; JWT)
+Stages --> Front: 200 like(value=1)
+@enduml
