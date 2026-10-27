@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+
+    <title>Плитка — стадии гипертонии</title>
+
+    <link rel="stylesheet" href="/resources/styles/hypertension.css?v=15">
+</head>
+
+<body class="app-body grid-body">
+
+<main class="phone-shell grid-shell">
+
+    <section class="search-zone">
+
+        <form class="sbp-slider-form" action="/stages" method="GET">
+
+            <div class="slider-header">
+
+                <label for="sbp_min">
+                    Систолическое давление
+                </label>
+
+                <strong class="slider-current-value">
+                    {{ if .SBPQuery }}
+                    {{ .SBPQuery }} мм рт. ст.
+                    {{ else }}
+                    выберите значение
+                    {{ end }}
+                </strong>
+
+            </div>
+
+            <!-- ЛЕВАЯ граница: минимум берётся из карточек -->
+            <input
+                    id="sbp_min"
+                    name="sbp_min"
+                    type="range"
+                    min="{{ .SBPBounds.Min }}"
+                    max="{{ .SBPBounds.Max }}"
+                    step="1"
+                    value="{{ if .SBPMin }}{{ .SBPMin }}{{ else }}{{ .SBPBounds.Min }}{{ end }}"
+                    aria-label="Минимальное систолическое давление"
+            >
+
+            <!-- ПРАВАЯ граница: максимум берётся из карточек -->
+            <input
+                    id="sbp_max"
+                    name="sbp_max"
+                    type="range"
+                    min="{{ .SBPBounds.Min }}"
+                    max="{{ .SBPBounds.Max }}"
+                    step="1"
+                    value="{{ if .SBPMax }}{{ .SBPMax }}{{ else }}{{ .SBPBounds.Max }}{{ end }}"
+                    aria-label="Максимальное систолическое давление"
+            >
+
+            <div class="slider-scale">
+                <span>{{ .SBPBounds.Min }}</span>
+                <span>{{ .SBPBounds.Max }}</span>
+            </div>
+
+            <div class="slider-actions">
+
+                <button
+                        class="slider-submit"
+                        type="submit"
+                >
+                    Применить
+                </button>
+
+                <a
+                        class="slider-reset"
+                        href="/stages"
+                >
+                    Сбросить
+                </a>
+
+            </div>
+
+        </form>
+
+        {{ if .FilterError }}
+        <p class="filter-error">
+            {{ .FilterError }}
+        </p>
+        {{ end }}
+
+    </section>
+
+
+    <section class="stage-grid">
+
+        {{ range .Cards }}
+
+        <article
+                class="stage-card"
+                data-video-url="{{ if .Service.VideoURL }}{{ .Service.VideoURL }}{{ else }}/resources/media/stage1.mp4{{ end }}"
+        >
+
+            <a
+                    class="stage-card-link"
+                    href="/feed/{{ .Service.ID }}"
+            >
+
+                {{ if .Service.ImageURL }}
+
+                <img
+                        src="{{ .Service.ImageURL }}"
+                        alt="{{ .StageTitle }}"
+                >
+
+                {{ else }}
+
+                <img
+                        src="/resources/media/stage1.png"
+                        alt="Фото по умолчанию для {{ .StageTitle }}"
+                >
+
+                {{ end }}
+
+                <div class="stage-card-copy">
+
+                    <div class="stage-card-head">
+
+                        <h2>
+                            {{ .StageTitle }}
+                        </h2>
+
+                        <span class="card-likes">
+                            ♡ {{ .LikesCount }}
+                        </span>
+
+                    </div>
+
+                    <p>
+                        {{ .StageRange }}
+                    </p>
+
+                </div>
+
+            </a>
+
+
+            <form
+                    class="stage-delete-form"
+                    action="/stages/{{ .Service.ID }}/delete"
+                    method="POST"
+            >
+
+                <button
+                        class="stage-delete-button"
+                        type="submit"
+                >
+                    Удалить
+                </button>
+
+            </form>
+
+        </article>
+
+        {{ else }}
+
+        <p class="empty-result">
+            Для выбранного САД карточка не найдена.
+        </p>
+
+        {{ end }}
+
+    </section>
+
+
+    <nav
+            class="bottom-nav"
+            aria-label="Основная навигация"
+    >
+
+        <a href="/feed/">
+            лента
+        </a>
+
+        <a href="/draft">
+            добавить
+        </a>
+
+        <a
+                class="active"
+                href="/stages"
+        >
+            плитка
+        </a>
+
+    </nav>
+
+</main>
+
+</body>
+</html>

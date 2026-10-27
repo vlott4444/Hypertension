@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>Добавление — стадии гипертонии</title>
+    <link rel="stylesheet" href="/resources/styles/hypertension.css">
+</head>
+<body class="app-body draft-body">
+<main class="phone-shell draft-shell">
+    <form class="draft-content" action="/draft/publish" method="POST">
+        <h1>Расчет и классификация<br>стадии АГ</h1>
+
+        <input type="hidden" name="service_id" value="{{ .Card.Service.ID }}">
+
+        <section class="draft-field media-field">
+            <label for="photo">Фото:</label>
+            <img class="draft-preview" src="/resources/media/draft_stage1.png" alt="Фото черновика">
+            <input id="photo" type="file" accept="image/png,image/jpeg">
+            <small>Фото по умолчанию хранится на сервере</small>
+        </section>
+
+        <section class="draft-field media-field">
+            <label for="video">Видео:</label>
+            <video class="draft-video-preview" muted controls preload="metadata"
+                   poster="/resources/media/draft_stage1.png">
+                <source src="/resources/media/draft_stage1.mp4" type="video/mp4">
+            </video>
+            <input id="video" type="file" accept="video/mp4">
+            <small>Видео по умолчанию хранится на сервере</small>
+        </section>
+
+        <section class="draft-field text-field">
+            <label for="description">Описание:</label>
+            <textarea id="description" name="description" rows="2">{{ .Card.Service.Description }}</textarea>
+        </section>
+
+        <section class="draft-field pressure-field">
+            <label for="sbp">Систолическое АД (SBP):</label>
+            <div class="value-row">
+                <input id="sbp" name="sbp" type="number" min="1" value="{{ .Card.Service.SystolicBP }}" placeholder="мм рт. ст." required>
+                <span>мм рт. ст.</span>
+            </div>
+        </section>
+
+        <section class="draft-field pressure-field">
+            <label for="dbp">Диастолическое АД (DBP):</label>
+            <div class="value-row">
+                <input id="dbp" name="dbp" type="number" min="1" value="{{ .Card.Service.DiastolicBP }}" placeholder="мм рт. ст." required>
+                <span>мм рт. ст.</span>
+            </div>
+        </section>
+
+        <button class="publish-button" type="submit">Опубликовать</button>
+    </form>
+
+    <nav class="bottom-nav" aria-label="Основная навигация">
+        <a href="/feed/">лента</a>
+        <a class="active" href="/draft">добавить</a>
+        <a href="/stages">плитка</a>
+    </nav>
+</main>
+</body>
+</html>

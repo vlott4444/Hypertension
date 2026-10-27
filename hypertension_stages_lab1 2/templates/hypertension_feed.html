@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="ru">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+
+    <title>{{ .Card.StageTitle }} — стадии гипертонии</title>
+
+    <link rel="stylesheet" href="/resources/styles/hypertension.css">
+</head>
+
+
+<body class="app-body feed-body">
+
+
+<main class="phone-shell feed-shell">
+
+
+    <section class="feed-media">
+
+
+        <video class="feed-video"
+               autoplay
+               muted
+               loop
+               playsinline
+               poster="{{ if .Card.Service.ImageURL }}{{ .Card.Service.ImageURL }}{{ else }}/resources/media/stage1.png{{ end }}">
+
+            {{ if .Card.Service.VideoURL }}
+            <source src="{{ .Card.Service.VideoURL }}" type="video/mp4">
+            {{ else }}
+            <source src="/resources/media/stage1.mp4" type="video/mp4">
+            {{ end }}
+
+        </video>
+
+
+        <div class="feed-shade"></div>
+
+        <input type="checkbox"
+               id="desc-toggle-{{ .Card.Service.ID }}"
+               class="desc-toggle">
+
+        <aside class="feed-actions">
+
+            <div class="feed-like" aria-label="Количество лайков">
+
+                <span class="heart-icon">♡</span>
+
+                <span>
+                    {{ .Card.LikesCount }}
+                </span>
+
+            </div>
+
+
+            <a class="next-button"
+               href="/feed/{{ .Card.Service.ID }}?next=true">
+
+                Далее
+
+            </a>
+
+        </aside>
+
+
+        <section class="feed-copy">
+
+            <h1>
+                {{ .Card.StageRomanTitle }}<br>
+                гипертонической<br>
+                болезни
+            </h1>
+
+            <div class="feed-divider"></div>
+
+            <div class="feed-description">
+
+                <p class="desc-text">
+                    {{ .Card.Service.Description }}
+                </p>
+
+                <label for="desc-toggle-{{ .Card.Service.ID }}" class="more-button">
+                    <span class="more-label-open">ещё</span>
+                    <span class="more-label-close">свернуть</span>
+                </label>
+
+            </div>
+
+        </section>
+
+
+    </section>
+
+
+    <nav class="bottom-nav" aria-label="Основная навигация">
+
+        <a class="active" href="/feed/">
+            лента
+        </a>
+
+        <a href="/draft">
+            добавить
+        </a>
+
+        <a href="/stages">
+            плитка
+        </a>
+
+    </nav>
+
+
+</main>
+
+
+</body>
+
+</html>
